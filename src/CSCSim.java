@@ -52,7 +52,7 @@ public class CSCSim {
         int start_address = 0x0000;
 
         String executable = null;
-        if (args.length > 1) {
+        if (args.length > 0) {
             for (String arg: args){
                 if (arg.equals("-m")) {
                     start_in_monitor = true;
@@ -505,7 +505,7 @@ public class CSCSim {
                 if (loadop == 9) {
                     System.out.printf("%c", databus); // Flush the output
                     if (debug)
-                        System.out.printf("->IO %c", databus);
+                        System.out.printf("->IO [%c]", databus);
                 }
                 if (loadop == 10) {
                     BANK = databus;
