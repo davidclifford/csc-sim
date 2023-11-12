@@ -52,7 +52,7 @@ public class CSCSim {
         int start_address = 0x0000;
 
         String executable = null;
-        if (args.length > 0) {
+        if (args.length > 1) {
             for (String arg: args){
                 if (arg.equals("-m")) {
                     start_in_monitor = true;
@@ -215,19 +215,22 @@ public class CSCSim {
         // Initialize simulation
         int A = 0;
         int B = 0;
+        int C = 0;
+        int D = 0;
         int AH = 0;
         int AL = 0;
         int IR = 0;
         int phase = 0;
         int FR = 0;
+        int ALU = 0;
 
         int ALUOP    = 0x001f;
-        int LOADOP   = 0x0007;
-        int LOADSHIFT = 5;
+        int LOADOP   = 0x000f;
+        int LOADSHIFT = 0;
         int DBUSOP   = 0x0003;
-        int DBUSSHIFT = 8;
+        int DBUSSHIFT = 4;
         int JUMPOP   = 0x0007;
-        int JUMPSHIFT = 10;
+        int JUMPSHIFT = 6;
         int ARENA    = 0x0001;
         int ARSHIFT = 13; // Active low
         int PCINCR   = 0x0001;
@@ -244,41 +247,25 @@ public class CSCSim {
         int MEMRESULT = 0;
         int ALURESULT = 1;
         int UARTRESULT = 2;
-        int VIDRESULT = 3;
+        int EXTRESULT = 3;
 
         String [] ALUop = {
-                "0",
-                "A",
-                "B",
-                "-A",
-                "-B",
-                "A+1",
-                "B+1",
-                "A-1",
-                "B-1",
-                "A+B",
-                "A+B+1",
-                "A-B",
-                "A-Bspecial",
-                "B-A",
-                "A-B-1",
-                "B-A-1",
-                "A*BHI",
-                "A*BLO",
-                "A/B",
-                "A%B",
-                "A<<B",
-                "A>>BL",
-                "A>>BA",
-                "AROLB",
-                "ARORB",
-                "A&B",
-                "A|B",
-                "A^B",
-                "!A",
-                "!B",
-                "ADIVB",
-                "AREMB"
+                "A","A+1","B","B+1","AA","A-1","BB","B-1",
+                "A+B","A+B+1","A-B","A-B-1","B-A","B-A-1","0","1",
+                "A*Blo","A*Bhi","A/B","A%B","A|B","A&B","A^B","AB/10",
+                "AB%10","!A","!B","-A","-B","1D","1E","1F",
+                "C","C+1","D","D+1","CC","C-1","DD","D-1",
+                "C+D","C+D+1","C-D","C-D-1","D-C","D-C-1","2E","2F",
+                "C*Dlo","C*Dhi","C/D","C%D","C|D","C&D","C^D","CD/10",
+                "CD%10","!C","!D","-C","-D","3D","3E","3F",
+                "A+","41","B+","43","A-","45","B-","47",
+                "A+B+","49","A-B-","4B","B-A-","4D","CY","4F",
+                "50","51","52","53","54","55","56","57",
+                "58","59","5A","5B","5C","5D","5E","5F",
+                "C+","61","D+","63","C-","65","D-","67",
+                "C+D+","69","C-D-","6B","D-C-","6D","6E","6F",
+                "70","71","72","73","74","77","76","77",
+                "78","79","7A","7B","7C","7D","7E","7F"
         };
 
         // Load in binary files for ALU, Decode, Rom, Ram and Vram
@@ -324,6 +311,9 @@ public class CSCSim {
         long now = last;
         while( true ) {
             try {
+                if (IR == 0xff)
+                    System.exit(0);
+
                 // Cycle accurate timing
                 if (cycle_speed > 0) {
                     do {
@@ -344,7 +334,7 @@ public class CSCSim {
                 boolean divbyzero = false;
 
                 // Decode the microinstruction
-                int aluop = uinst & ALUOP;
+                int aluop = ALU & ALUOP;
                 int loadop = (uinst >> LOADSHIFT) & LOADOP;
                 int dbusop = (uinst >> DBUSSHIFT) & DBUSOP;
                 int jumpop = (uinst >> JUMPSHIFT) & JUMPOP;
@@ -362,11 +352,20 @@ public class CSCSim {
 
                 // Do the ALU operation.
                 int databus = 0;
+                int CD = (aluop >> 5) & 1;
+                int LHS = (CD == 1) ? C : A;
+                int RHS = (CD == 1) ? D : B;
+                int usecarry = (aluop >> 6) & 1;
                 if (dbusop == ALURESULT) {
-                    int alu_addr = ((aluop << 16) | (A << 8) | B) * 2;
+                    if (usecarry == 1) aluop = aluop & 0xfe | usecarry;
+                    int alu_addr = (((aluop & 0x1f) << 16) | (LHS << 8) | RHS) * 2;
                     int aluresult = ((ALURom[alu_addr+1]&0xff) << 8) | (ALURom[alu_addr]&0xff);
                     if (debug) {
-                        System.out.printf("AB %02x %02x %s %04x \n", A, B, ALUop[aluop], aluresult);
+                        if ((aluop & 0x20) == 0x20) {
+                            System.out.printf("CD %02x %02x %s %04x \n", LHS, RHS, ALUop[aluop], aluresult);
+                        } else {
+                            System.out.printf("AB %02x %02x %s %04x \n", LHS, RHS, ALUop[aluop], aluresult);
+                        }
                     }
 
                     // Store value of flags in FR if using extended CPU
@@ -376,9 +375,8 @@ public class CSCSim {
                     overflow = ((aluresult >> VSHIFT) & 1) == 1;
                     zero = ((aluresult >> ZSHIFT) & 1) == 1;
                     negative = ((aluresult >> NSHIFT) & 1) == 1;
-                    divbyzero = ((aluresult >> DSHIFT) & 1) == 1;
                     if (debug) {
-                        System.out.printf("FL %b %b %b %b %b\n", carry, overflow, zero, negative, divbyzero);
+                        System.out.printf("FL %b %b %b %b\n", carry, overflow, zero, negative);
                     }
                     databus = aluresult & 0xff;
                 }
@@ -407,11 +405,10 @@ public class CSCSim {
                 }
 
                 // Get the video memory value
-                if (dbusop == VIDRESULT) {
+                if (dbusop == EXTRESULT) {
                     if (address >= 0x8000)
                         databus = (char)Vram[address-0x8000];
-                    else
-                    if (BANK < 0x10) {
+                    else if (BANK < 0x10) {
                         databus = (char) Vram[address];
 //                    } else if (BANK >= 0xF0) {
 //                        databus = (char) SSD[(address & 0x7fff) + 0x8000 * (BANK & 0x0F)];
@@ -455,10 +452,16 @@ public class CSCSim {
                         System.out.printf("->B %02x\n", B);
                 }
                 if (loadop == 4) {
-                    // Memory mapped I/O - BANK
-                    if (address == BANK_ADDR) {
-                        BANK = databus;
-                    }
+                    C = databus;
+                    if (debug)
+                        System.out.printf("->C %02x\n", C);
+                }
+                if (loadop == 5) {
+                    D = databus;
+                    if (debug)
+                        System.out.printf("->D %02x\n", D);
+                }
+                if (loadop == 6) {
                     // RAM
                     if (address >= 0x8000) {
                         Ram[address - 0x8000] = (char)databus;
@@ -489,20 +492,30 @@ public class CSCSim {
                         }
                     }
                 }
-                if (loadop == 5) {
+                if (loadop == 7) {
                     AH = databus;
                     if (debug)
                         System.out.printf("->AH %02x\n", AH);
                 }
-                if (loadop == 6) {
+                if (loadop == 8) {
                     AL = databus;
                     if (debug)
                         System.out.printf("->AL %02x\n", AL);
                 }
-                if (loadop == 7) {
+                if (loadop == 9) {
                     System.out.printf("%c", databus); // Flush the output
                     if (debug)
                         System.out.printf("->IO %c", databus);
+                }
+                if (loadop == 10) {
+                    BANK = databus;
+                    if (debug)
+                        System.out.printf("->BANK %02x\n", databus);
+                }
+                if (loadop == 11) {
+                    ALU = databus;
+                    if (debug)
+                        System.out.printf("->ALU OP %02x\n", databus);
                 }
 
                 //    Increment the PC and the phase
@@ -515,36 +528,29 @@ public class CSCSim {
                 }
 
                 //    Do any jumps
-                if (jumpop == 1 && carry) {
+                if (jumpop == 1 && zero) {
                     PC = address;
                     if (debug)
-                        System.out.print("JC ");
+                        System.out.print("JPZ ");
                 }
-
-                if (jumpop == 2 && overflow) {
+                if (jumpop == 2 && negative) {
                     PC = address;
                     if (debug)
-                        System.out.print("JO ");
+                        System.out.print("JPN ");
                 }
-                if (jumpop == 3 && zero) {
+                if (jumpop == 3 && keys.length() == 0) {
                     PC = address;
                     if (debug)
-                        System.out.print("JZ ");
+                        System.out.print("JPI ");
                 }
-                if (jumpop == 4 && negative) {
-                    PC = address;
+                if (jumpop == 4) {
                     if (debug)
-                        System.out.print("JN ");
+                        System.out.print("JPO ");
                 }
-                if (jumpop == 5 && divbyzero) {
+                if (jumpop == 5) {
                     PC = address;
                     if (debug)
-                        System.out.print("JD ");
-                }
-                if (jumpop == 7 && keys.length() == 0) {
-                    PC = address;
-                    if (debug)
-                        System.out.print("JI ");
+                        System.out.print("JMP ");
                 }
                 //    Exit if PC goes to $FFFF
                 if (PC == 0xffff) {
