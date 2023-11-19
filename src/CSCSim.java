@@ -285,9 +285,9 @@ public class CSCSim {
 
 
         try {
-            read_bytes("alu.bin", ALURom, 0);
-            read_bytes("control.bin", ControlRom, 0);
-            read_bytes("instr.bin", Rom, 0);
+            read_bytes("Sim/alu.bin", ALURom, 0);
+            read_bytes("Sim/control.bin", ControlRom, 0);
+            read_bytes("Sim/instr.bin", Rom, 0);
 //            read_bytes("ssd.bin", SSD, 0);
             if (executable != null) {
                 if (start_address >= 0x8000) {
@@ -334,7 +334,7 @@ public class CSCSim {
                 boolean divbyzero = false;
 
                 // Decode the microinstruction
-                int aluop = ALU & ALUOP;
+                int aluop = ALU;
                 int loadop = (uinst >> LOADSHIFT) & LOADOP;
                 int dbusop = (uinst >> DBUSSHIFT) & DBUSOP;
                 int jumpop = (uinst >> JUMPSHIFT) & JUMPOP;
@@ -361,6 +361,7 @@ public class CSCSim {
                     int alu_addr = (((aluop & 0x1f) << 16) | (LHS << 8) | RHS) * 2;
                     int aluresult = ((ALURom[alu_addr+1]&0xff) << 8) | (ALURom[alu_addr]&0xff);
                     if (debug) {
+                        System.out.printf("ALUOP %02x\n", aluop);
                         if ((aluop & 0x20) == 0x20) {
                             System.out.printf("CD %02x %02x %s %04x \n", LHS, RHS, ALUop[aluop], aluresult);
                         } else {
@@ -466,7 +467,7 @@ public class CSCSim {
                     if (address >= 0x8000) {
                         Ram[address - 0x8000] = (char)databus;
                         if (debug)
-                            System.out.printf("->RAM %04x %02x\n", address - 0x8000, (byte)Ram[address - 0x8000]);
+                            System.out.printf("->RAM %04x %02x\n", address, (byte)Ram[address - 0x8000]);
                     } else {
                         // Use BANK register to determine VGA or SSD memory
                         if (BANK == 0) {
