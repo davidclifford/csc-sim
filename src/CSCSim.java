@@ -44,9 +44,8 @@ public class CSCSim {
         int  ysize = 960;
 
         boolean debug = false;
-        boolean slow = false;
+        int slow = 0;
         boolean video = true;
-        boolean extended = false;
         boolean start_in_monitor = false;
 
         int start_address = 0x0000;
@@ -60,14 +59,16 @@ public class CSCSim {
                     debug = true;
                 } else if (arg.equals("-c")) {
                     cycle_speed = 320;
+                } else if (arg.equals("-c1")) {
+                    cycle_speed = 320;
+                } else if (arg.equals("-c2")) {
+                    cycle_speed = 160;
                 } else if (arg.equals("-f")) {
                     fast = true;
-                } else if (arg.equals("-s")) {
-                    slow = true;
+                } else if (arg.substring(0,2).equals("-s")) {
+                    slow = Integer.parseInt(arg.substring(2));
                 } else if (arg.equals("-v")) {
                     video = false;
-                } else if (arg.equals("-e")) {
-                    extended = true;
                 } else if (arg.equals("-h")) {
                     usage();
                 } else if (arg.startsWith("-")) {
@@ -345,9 +346,9 @@ public class CSCSim {
                     System.out.printf("PC %04x IR %02x p %01x ui %04x upa %d%d%d \n",
                             PC, IR, phase, uinst, usreset, pcincr, arena);
                 }
-                if (slow) {
-                    // Wait one second
-                    wait(1000);
+                if (slow != 0) {
+                    // Wait
+                    wait(1000 / Math.min(slow, 1000));
                 }
 
                 // Do the ALU operation.
@@ -369,15 +370,15 @@ public class CSCSim {
                         }
                     }
 
-                    // Store value of flags in FR if using extended CPU
-                    FR = extended ? (aluresult >> CSHIFT) & 0x0f : 0;
+                    // Store value of flags in FR
+                    FR = (aluresult >> CSHIFT) & 0x0f;
                     // Extract the flags from the result, and remove from the result
                     carry = ((aluresult >> CSHIFT) & 1) == 1;
                     overflow = ((aluresult >> VSHIFT) & 1) == 1;
                     zero = ((aluresult >> ZSHIFT) & 1) == 1;
                     negative = ((aluresult >> NSHIFT) & 1) == 1;
                     if (debug) {
-                        System.out.printf("FL %b %b %b %b\n", carry, overflow, zero, negative);
+                        System.out.printf("FL C%b V%b Z%b N%b\n", carry, overflow, zero, negative);
                     }
                     databus = aluresult & 0xff;
                 }
