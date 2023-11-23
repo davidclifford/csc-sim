@@ -426,6 +426,7 @@ public class CSCSim {
                 if (dbusop == UARTRESULT) {
                     if (keys.length() > 0) {
                         databus = keys.charAt(0);
+                        //System.out.printf("KEY = %02x\n", databus);
                         if (loadop != 0) {
                             keys = keys.substring(1);
                         }
@@ -435,7 +436,7 @@ public class CSCSim {
                 }
 
                 if (debug)
-                    System.out.printf("dop %x dbus %02x \n", dbusop, databus);
+                    System.out.printf("data-op %x data-bus %02x \n", dbusop, databus);
 
                 //Load from the data bus
                 if (loadop == 1) {
@@ -507,7 +508,7 @@ public class CSCSim {
                 if (loadop == 9) {
                     System.out.printf("%c", databus); // Flush the output
                     if (debug)
-                        System.out.printf("->IO [%c]", databus);
+                        System.out.printf("->IO [%02x]", databus);
                 }
                 if (loadop == 10) {
                     BANK = databus;
@@ -543,11 +544,11 @@ public class CSCSim {
                 if (jumpop == 3 && keys.length() == 0) {
                     PC = address;
                     if (debug)
-                        System.out.print("JPI ");
+                        System.out.print("JRX ");
                 }
                 if (jumpop == 4) {
                     if (debug)
-                        System.out.print("JPO ");
+                        System.out.print("JTX ");
                 }
                 if (jumpop == 5) {
                     PC = address;
@@ -720,7 +721,7 @@ public class CSCSim {
             }
         } catch (EOFException e) {
         } catch (Exception e) {
-            System.out.println(e.getMessage());
+            System.out.printf("Error reading bytes %s %s\n", filename, e.getMessage());
         }
     }
 
@@ -733,7 +734,7 @@ public class CSCSim {
             }
             out.flush();
         } catch (Exception e) {
-            System.out.println(e.getMessage());
+            System.out.printf("Error writing bytes %s %s\n", filename, e.getMessage());
         }
     }
 
@@ -753,6 +754,8 @@ public class CSCSim {
             out.close();
         } catch (Exception e) {
             System.out.println(e.getMessage());
+            System.out.printf("Error saving screen %s %s\n", filename, e.getMessage());
+
         }
 
         filename = "screen.hex";
