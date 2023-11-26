@@ -271,7 +271,7 @@ public class CSCSim {
 
         // Load in binary files for ALU, Decode, Rom, Ram and Vram
         char[] ALURom = new char [0x400000];
-        char[] ControlRom = new char [0x20000];
+        char[] ControlRom = new char [0x80000];
         char[] Rom = new char [0x8000];
         char[] Ram = new char [0x8000];
 
