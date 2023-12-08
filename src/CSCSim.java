@@ -40,9 +40,7 @@ public class CSCSim {
 
     public static void main( String[] args ) {
 
-        int  xsize = 1280;
-        int  ysize = 960;
-
+        int pix_size = 8;
         boolean debug = false;
         int slow = 0;
         boolean video = true;
@@ -68,7 +66,8 @@ public class CSCSim {
                 } else if (arg.substring(0,2).equals("-s")) {
                     slow = Integer.parseInt(arg.substring(2));
                 } else if (arg.equals("-v")) {
-                    video = false;
+                    //video = false;
+                    pix_size = 6;
                 } else if (arg.equals("-h")) {
                     usage();
                 } else if (arg.startsWith("-")) {
@@ -94,6 +93,9 @@ public class CSCSim {
             }
         }
 
+        int  xsize = 160*pix_size;
+        int  ysize = 120*pix_size;
+
         if (executable == null)
             start_in_monitor = true;
 
@@ -110,6 +112,7 @@ public class CSCSim {
         // Add canvas to game window...
         frame.add( canvas );
         frame.pack();
+        frame.setLocation(1880-xsize,16);
         frame.setVisible( true );
         if (!video) frame.setState(Frame.ICONIFIED);
 
@@ -473,7 +476,7 @@ public class CSCSim {
                     } else {
                         // Use BANK register to determine VGA or SSD memory
                         if (BANK == 0) {
-                            plot(address, databus, Vram[address]);
+                            plot(address, databus, pix_size);
                             Vram[address] = (char) databus;
                             if (debug)
                                 System.out.printf("->VRAM %04x %02x\n", address, (byte) Vram[address]);
@@ -565,7 +568,7 @@ public class CSCSim {
                 // Do graphics
                 // Blit image and flip every so often
                 if (System.currentTimeMillis() - time > 20) {
-                    refreshScreen();
+                    refreshScreen(pix_size);
                     graphics = buffer.getDrawGraphics();
                     graphics.drawImage(bi, 0, 0, null);
                     if (!buffer.contentsLost())
@@ -639,18 +642,17 @@ public class CSCSim {
 //            SSD_state = STEP_RESET;
 //    }
 
-    static private void refreshScreen(){
+    static private void refreshScreen(int size){
         for (int y=0; y<120; y++) {
             for (int x=0; x<160; x++) {
                 int addr = y<< 8 | x;
-                plot(addr, Vram[addr], 0);
+                plot(addr, Vram[addr], size);
             }
         }
         refresh = false;
     }
 
-    static private void plot(int addr, int colour, int current) {
-        final int size = 8;
+    static private void plot(int addr, int colour, int size) {
         final int half = size/2;
         int x = addr & 0xFF;
         int y = addr >> 8;
