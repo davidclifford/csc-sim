@@ -34,7 +34,7 @@ public class CSCSim {
 
     public static void usage() {
         System.out.println("Usage: ./jsim -d -s -f -v -m -c [program.bin] [start execution");
-        System.out.println("d Debug, s Slow, f Fast, v Minimised video, m Start in Monitor, c Cycle accurate");
+        System.out.println("d Debug, s Slow, f Fast, v smaller video, m Start in Monitor, c Cycle accurate, x xtend video");
         System.exit(1);
     }
 
@@ -45,6 +45,7 @@ public class CSCSim {
         int slow = 0;
         boolean video = true;
         boolean start_in_monitor = false;
+        boolean xtended_video = false;
 
         int start_address = 0x0000;
 
@@ -63,6 +64,8 @@ public class CSCSim {
                     cycle_speed = 160;
                 } else if (arg.equals("-f")) {
                     fast = true;
+                } else if (arg.equals("-x")) {
+                    xtended_video = true;
                 } else if (arg.substring(0,2).equals("-s")) {
                     slow = Integer.parseInt(arg.substring(2));
                 } else if (arg.equals("-v")) {
@@ -103,6 +106,8 @@ public class CSCSim {
         JFrame frame = new JFrame();
         frame.setIgnoreRepaint( true );
         frame.setDefaultCloseOperation( JFrame.EXIT_ON_CLOSE );
+//        frame.setExtendedState(JFrame.MAXIMIZED_BOTH);
+        if (xtended_video) frame.setUndecorated(true);
 
         // Create canvas for painting...
         Canvas canvas = new Canvas();
@@ -113,6 +118,7 @@ public class CSCSim {
         frame.add( canvas );
         frame.pack();
         frame.setLocation(1880-xsize,16);
+
         frame.setVisible( true );
         if (!video) frame.setState(Frame.ICONIFIED);
 
