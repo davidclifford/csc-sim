@@ -28,6 +28,7 @@ public class CSCSim {
     static Color backgroundColour = new Color(0,0,0);
     static boolean refresh = false;
     static boolean fast = false;
+    static boolean step = false;
     static int cycle_speed = 0;
     static short MREG0 = 0;
     static short MREG1 = 0;
@@ -164,6 +165,8 @@ public class CSCSim {
                 int d = e.getKeyChar();
                 if (d == 19) { // ^S - Save screen
                     save_screen();
+                } else if (d == 18) { // ^R - Run screen
+                    step = false;
                 } else if (d == 6) { // ^F - Fast mode toggle
                     fast = !fast;
                     cycle_speed = 0;
@@ -241,6 +244,8 @@ public class CSCSim {
         int DBUSSHIFT = 4;
         int JUMPOP   = 0x0007;
         int JUMPSHIFT = 6;
+        int ALONE = 1;
+        int ALONESHIFT = 12;
         int ARENA    = 0x0001;
         int ARSHIFT = 13; // Active low
         int PCINCR   = 0x0001;
@@ -321,8 +326,11 @@ public class CSCSim {
         long now = last;
         while( true ) {
             try {
-                if (IR == 0xff)
+                if (IR == 0xfe)
                     System.exit(0);
+
+                if (IR == 0xff)
+                    step = true;
 
                 // Cycle accurate timing
                 if (cycle_speed > 0) {
@@ -348,16 +356,21 @@ public class CSCSim {
                 int loadop = (uinst >> LOADSHIFT) & LOADOP;
                 int dbusop = (uinst >> DBUSSHIFT) & DBUSOP;
                 int jumpop = (uinst >> JUMPSHIFT) & JUMPOP;
+                int alone = (uinst >> ALONESHIFT) & ALONE;
                 int arena = (uinst >> ARSHIFT) & ARENA;
                 int pcincr = (uinst >> PCSHIFT) & PCINCR;
                 int usreset = (uinst >> USSHIFT) & USRESET;
                 if (debug) {
-                    System.out.printf("PC %04x IR %02x p %01x ui %04x upa %d%d%d \n",
-                            PC, IR, phase, uinst, usreset, pcincr, arena);
+                    System.out.printf("PC %04x IR %02x p %01x ui %04x upa %d%d%d%d \n",
+                            PC, IR, phase, uinst, usreset, pcincr, arena, alone);
                 }
                 if (slow != 0) {
                     // Wait
                     wait(1000 / Math.min(slow, 1000));
+                }
+                if (step) {
+                    // Wait
+                    wait(1000);
                 }
 
                 // Do the ALU operation.
@@ -406,6 +419,7 @@ public class CSCSim {
                         System.out.printf("PC %04x \n", PC);
                     }
                 }
+                address |= arena;
 
                 // Get the memory value
                 if (dbusop == MEMRESULT) {
