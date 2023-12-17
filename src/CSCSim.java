@@ -324,14 +324,20 @@ public class CSCSim {
 
         long last = System.nanoTime();
         long now = last;
+
+        boolean carry = false;
+        boolean overflow = false;
+        boolean zero = false;
+        boolean negative = false;
+        
         while( true ) {
             try {
                 if (IR == 0xfe)
                     System.exit(0);
 
-                if (IR == 0xff)
-                    step = true;
-
+                if (IR == 0xff) {
+                    debug = true;
+                }
                 // Cycle accurate timing
                 if (cycle_speed > 0) {
                     do {
@@ -344,12 +350,6 @@ public class CSCSim {
                 int decodeidx = (FR << FRSHIFT) | (IR << IRSHIFT) | phase;
                 // Get the microinstruction
                 int uinst = ((((char)ControlRom[decodeidx*2+1]) << 8) | ((char)ControlRom[decodeidx*2]));
-
-                boolean carry = false;
-                boolean overflow = false;
-                boolean zero = false;
-                boolean negative = false;
-                boolean divbyzero = false;
 
                 // Decode the microinstruction
                 int aluop = ALU;
@@ -380,11 +380,12 @@ public class CSCSim {
                 int RHS = (CD == 1) ? D : B;
                 int usecarry = (aluop >> 6) & 1;
                 if (dbusop == ALURESULT) {
-                    if (usecarry == 1) aluop = aluop & 0xfe | usecarry;
+                    int cy = carry ? 1 : 0;
+                    if (usecarry == 1) aluop = aluop & 0xfe | cy;
                     int alu_addr = (((aluop & 0x1f) << 16) | (LHS << 8) | RHS) * 2;
                     int aluresult = ((ALURom[alu_addr+1]&0xff) << 8) | (ALURom[alu_addr]&0xff);
                     if (debug) {
-                        System.out.printf("ALUOP %02x\n", aluop);
+                        System.out.printf("ALUOP %02x uc %d cy %d -> cy %d\n", aluop, usecarry, cy, ((aluresult >> CSHIFT) & 1));
                         if ((aluop & 0x20) == 0x20) {
                             System.out.printf("CD %02x %02x %s %04x \n", LHS, RHS, ALUop[aluop], aluresult);
                         } else {
@@ -419,7 +420,7 @@ public class CSCSim {
                         System.out.printf("PC %04x \n", PC);
                     }
                 }
-                address |= arena;
+                address |= alone;
 
                 // Get the memory value
                 if (dbusop == MEMRESULT) {
